@@ -1,5 +1,7 @@
 from collections import UserDict
 from datetime import datetime, timedelta
+import pickle
+
 
 def input_error(func):
     def wrapper(*args, **kwargs):
@@ -11,7 +13,9 @@ def input_error(func):
             return str(e)
         except Exception as e:
             return "An error occurred."
+
     return wrapper
+
 
 class Field:
     def __init__(self, value):
@@ -20,11 +24,13 @@ class Field:
     def __str__(self):
         return str(self.value)
 
+
 class Name(Field):
     def __init__(self, value):
         if not value:
             raise ValueError("Name cannot be empty")
         super().__init__(value)
+
 
 class Phone(Field):
     def __init__(self, value):
@@ -36,12 +42,14 @@ class Phone(Field):
     def _validate(value):
         return value.isdigit() and len(value) == 10
 
+
 class Birthday(Field):
     def __init__(self, value):
         try:
             self.value = datetime.strptime(value, "%d.%m.%Y")
         except ValueError:
             raise ValueError("Invalid date format. Use DD.MM.YYYY")
+
 
 class Record:
     def __init__(self, name):
@@ -78,6 +86,7 @@ class Record:
         birthday_str = f", birthday: {self.birthday.value.strftime('%d.%m.%Y')}" if self.birthday else ""
         return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}{birthday_str}"
 
+
 class AddressBook(UserDict):
     def add_record(self, record):
         self.data[record.name.value] = record
@@ -106,6 +115,7 @@ class AddressBook(UserDict):
 
         return upcoming_birthdays
 
+
 @input_error
 def add_contact(args, book: AddressBook):
     name, phone, *_ = args
@@ -119,6 +129,7 @@ def add_contact(args, book: AddressBook):
         record.add_phone(phone)
     return message
 
+
 @input_error
 def change_contact(args, book: AddressBook):
     name, old_phone, new_phone, *_ = args
@@ -126,17 +137,20 @@ def change_contact(args, book: AddressBook):
     record.edit_phone(old_phone, new_phone)
     return f"Changed phone for {name} from {old_phone} to {new_phone}."
 
+
 @input_error
 def show_phone(args, book: AddressBook):
     name, *_ = args
     record = book.find(name)
     return f"Phones for {name}: {', '.join(str(phone) for phone in record.phones)}."
 
+
 @input_error
 def show_all_contacts(book: AddressBook):
     if not book.data:
         return "Address book is empty."
     return "\n".join(str(record) for record in book.data.values())
+
 
 @input_error
 def add_birthday(args, book: AddressBook):
@@ -145,11 +159,13 @@ def add_birthday(args, book: AddressBook):
     record.add_birthday(birthday)
     return f"Birthday for {name} added."
 
+
 @input_error
 def show_birthday(args, book: AddressBook):
     name, *_ = args
     record = book.find(name)
     return f"Birthday for {name}: {record.show_birthday()}"
+
 
 @input_error
 def birthdays(args, book: AddressBook):
@@ -158,17 +174,34 @@ def birthdays(args, book: AddressBook):
         return "No upcoming birthdays this week."
     return "\n".join(str(record) for record in upcoming_birthdays)
 
+
 def parse_input(user_input):
     return user_input.split()
 
+
+def save_data(book, filename="addressbook.pkl"):
+    with open(filename, "wb") as f:
+        pickle.dump(book, f)
+
+
+def load_data(filename="addressbook.pkl"):
+    try:
+        with open(filename, "rb") as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        return AddressBook()
+
+
 def main():
-    book = AddressBook()
+    book = load_data()
     print("Welcome to the assistant bot!")
+
     while True:
         user_input = input("Enter a command: ")
         command, *args = parse_input(user_input)
 
         if command in ["close", "exit"]:
+            save_data(book)
             print("Good bye!")
             break
 
@@ -198,6 +231,7 @@ def main():
 
         else:
             print("Invalid command.")
+
 
 if __name__ == "__main__":
     main()
